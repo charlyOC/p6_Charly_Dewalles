@@ -21,7 +21,7 @@ const limiter = rateLimit({
 // accede à tous les chemins de fichiers
 const path = require('path');
 
-// protège les en-têtes HTTP
+// protège les en-têtes HTTP pour empêcher les détournements de clic
 const helmet = require('helmet');
 
 //router pour les sauces
@@ -30,8 +30,11 @@ const saucesRoutes = require('./routes/sauces');
 //router pourt les users
 const userRoutes = require('./routes/user');
 
+//ajout de dotenv pour "sécuriser" l'accès à la base de donnée
+require('dotenv').config();
+
 //connection à la base de donnée
-mongoose.connect('mongodb+srv://charly:IScEHY1aJPsetL5y@clusterp6.dkhbo.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
+mongoose.connect(process.env.MONGO_URL,
   { useCreateIndex: true,
     useNewUrlParser: true,
     useUnifiedTopology: true })
@@ -52,6 +55,7 @@ app.use((req, res, next) => {
 //je parse toute les requêtes
 app.use(bodyParser.json());
 
+// évite les injections dans la base de donnée mongodb
 app.use(mongoSanitize({
   replaceWith: '_'
 }))
