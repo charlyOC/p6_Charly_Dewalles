@@ -36,7 +36,7 @@ exports.modifySauce = (req, res, next) => {
   // création de l'objet sauce par défaut
   let sauceObject = {};
 
-  //utilisation de l'opérateur ternaire pour voir si req.fil existe
+  //utilisation de l'opérateur ternaire pour voir si un fichier existe
   req.file ? (
     Sauce.findOne({
       _id: req.params.id
@@ -45,15 +45,16 @@ exports.modifySauce = (req, res, next) => {
       fs.unlinkSync(`images/${filename}`)
     }),
     sauceObject = {
-      //s'il n'existe pas on parse pour récupérer la requête envoyé et on génère l'url de l'image
+      //si le fichier existe, on parse pour récupérer la requête envoyé et on modifie l'url de l'image
       ...JSON.parse(req.body.sauce),
       imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
     }
-    //s'il n'existe pas, copie de req.body de la sauce 
+    //s'il n'existe pas, copie du corps de la requête
     ) : ( sauceObject = {
       ...req.body
     }
   )
+  //on modifie ensuite l'objet que j'ai créé pour correspondre à l'id des paramètres de requête
   Sauce.updateOne(
     {
       _id: req.params.id
@@ -70,51 +71,61 @@ exports.modifySauce = (req, res, next) => {
   }))
 };
 
+//middleware pour supprimer une sauce
 exports.deleteSauce = (req, res, next) => {
-
+  //je vais chercher la sauce à supprimer selon l'id
   Sauce.findOne({ _id: req.params.id })
+
   .then(sauce => {
+    //je vais chercher l'image à supprimer
     const filename = sauce.imageUrl.split('/images/')[1];
+    //je la supprime du dossier images
     fs.unlink(`images/${filename}`, () => {
+      //méthode deleteone pour la supprimer de la bas de donnée
       Sauce.deleteOne({ _id: req.params.id })
         .then(() => res.status(200).json({message: 'objet supprimé'}))
-        .catch(error => res.status(400).json({error}));
-      });
+      .catch(error => res.status(400).json({error}));
+    });
   })
   .catch(error => res.status(400).json(error));
 
 };
 
+//middleware pour récupérer une sauce et l'afficher (au clic)
 exports.getOneSauce = (req, res, next) => {
   Sauce.findOne({ _id: req.params.id })
   .then(sauce => res.status(200).json(sauce))
   .catch(error => res.status(404).json({ message: 'objet non trouvé'}));
 };
 
+//middleware pour récupérer toutes les sauces et les afficher
 exports.getSauces = (req, res, next) => {
   Sauce.find()
   .then(sauce => res.status(200).json(sauce))
   .catch(error => res.status(400).json({ error }));
 };
 
+//middleware pour like et dislike 
 exports.likeAndDislike = (req, res, next) => {
 
+  //je vais chercher le like du frontend
   const like = req.body.like
 
+  //je prends le userID
   const userId = req.body.userId
 
+  //je prends l'ID de la sauce
   const sauceId = req.params.id
 
+  //si le user like
   if (like === 1) { 
-    Sauce.updateOne({
-        _id: sauceId
-      }, {
-        $push: {
-          usersLiked: userId
-        },
-        $inc: {
-          likes: +1
-        }, 
+
+    //méthode updateOne pour mettre à jour dans la base de donnée
+    Sauce.updateOne({_id: sauceId}, {
+        //je push dans le tableau userLiked, l'id du user qui vient de liker
+        $push: {usersLiked: userId},
+        //j'incrémente +1 au likes dans la base de donnée 
+        $inc: {likes: +1}, 
       })
       .then(() => res.status(200).json({
         message: "Vous aimez cette sauce !"
@@ -124,17 +135,12 @@ exports.likeAndDislike = (req, res, next) => {
       }))
   }
 
+  //si le user dislike
   if (like === -1) {
-    Sauce.updateOne(
+    Sauce.updateOne({ _id: sauceId },
       {
-        _id: sauceId
-      }, {
-        $push: {
-          usersDisliked: userId
-        },
-        $inc: {
-          dislikes: +1
-        }, 
+        $push: {usersDisliked: userId},
+        $inc: {dislikes: +1}, 
       }
     )
     .then(() => {
@@ -147,28 +153,37 @@ exports.likeAndDislike = (req, res, next) => {
     }))
   }
 
+  //si le user veut supprimer un like ou dislike
   if (like === 0){
-
-    Sauce.findOne( {
-      _id: sauceId 
-    })
+    //je trouve la sauce en question
+    Sauce.findOne({_id: sauceId})
 
     .then((sauce) => {
-
+      //si dans le tableau userLiked il y a le user qui souhaite retirer son like 
       if  (sauce.usersLiked.includes(userId)){
 
-        Sauce.updateOne({_id: sauceId}, { $inc: { likes: -1} , $pull: { usersLiked: userId}, _id: sauceId })
-          .then( () => res.status(200).json({ message: 'Vous avez retiré votre like' }))
+        //je mets à jour dans la base de donnée
+        Sauce.updateOne({_id: sauceId}, 
+        { 
+          $inc: { likes: -1}, 
+          $pull: { usersLiked: userId},
+          _id: sauceId 
+        })
+        .then( () => res.status(200).json({ message: 'Vous avez retiré votre like' }))
         .catch( error => res.status(400).json({ error}))
-
       }
+
 
       if  (sauce.usersDisliked.includes(userId)) {
 
-        Sauce.updateOne( {_id: sauceId}, { $inc: { dislikes: -1 }, $pull: { usersDisliked: userId}, _id: sauceId})
-          .then( () => res.status(200).json({ message: 'Vous avez retiré votre dislike' }))
+        Sauce.updateOne({_id: sauceId}, 
+        { 
+          $inc: { dislikes: -1 }, 
+          $pull: { usersDisliked: userId},
+          _id: sauceId
+        })
+        .then( () => res.status(200).json({ message: 'Vous avez retiré votre dislike' }))
         .catch( error => res.status(400).json({ error}))
-
       } 
 
     }).catch( error => res.status(400).json({ error}))              

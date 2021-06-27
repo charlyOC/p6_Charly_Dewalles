@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
 // je sanitize la base de donnée pour éviter les injections
-const mongoSanitize = require('express-mongo-sanitize')
+const mongoSanitize = require('express-mongo-sanitize');
 
 const rateLimit = require('express-rate-limit');
 

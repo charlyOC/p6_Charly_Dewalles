@@ -1,6 +1,10 @@
+
+//modèle des sauce à envoyer à la base de donnée 
+
 const mongoose = require('mongoose');
 
 
+//bien regarder les specs du frontend et les types
 const sauceSchema = mongoose.Schema({
   userId: {
     type: String,
@@ -56,4 +60,6 @@ const sauceSchema = mongoose.Schema({
   },
 })
 
+
+//j'exporte le module 
 module.exports = mongoose.model('Sauce', sauceSchema);
